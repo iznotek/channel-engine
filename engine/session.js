@@ -18,6 +18,7 @@ const {
   roundToThreeDecimals
 } = require('./util.js');
 const ChaosMonkey = require('./chaos_monkey.js');
+const { alignReturnVod } = require('./vod_return.js');
 
 const EVENT_LIST_LIMIT = 100;
 const DEFAULT_PLAYHEAD_DIFF_THRESHOLD = 1000;
@@ -46,6 +47,13 @@ class Session {
     this.currentMetadata = {};
     this._events = [];
     this.averageSegmentDuration = null;
+    this.preserveLiveReturnTail = config?.preserveLiveReturnTail === true;
+    if (this.preserveLiveReturnTail && config?.useDemuxedAudio) {
+      throw new Error("live return preservation supports muxed audio only");
+    }
+    if (this.preserveLiveReturnTail && config?.partialStoreHLSVod) {
+      throw new Error("live return preservation does not support partialStoreHLSVod");
+    }
     this.use_demuxed_audio = false;
     this.use_vtt_subtitles = false;
     this.dummySubtitleEndpoint = "";
@@ -1711,6 +1719,14 @@ class Session {
             // ---------------------------------------------------'
 
             await currentVod.reload(nextMseq, segments, audioSegments, reloadBehind);
+            if (this.preserveLiveReturnTail && !reloadBehind) {
+              const correction = alignReturnVod(currentVod, segments);
+              mseqV += correction.sequenceOffset;
+              discSeqV += correction.discontinuityOffset;
+              await this._sessionState.set("mediaSeq", mseqV);
+              await this._playheadState.set("mediaSeq", mseqV, isLeader);
+              await this._sessionState.set("discSeq", discSeqV);
+            }
             await this._sessionState.setCurrentVod(currentVod, { ttl: currentVod.getDuration() * 1000 });
             await this._sessionState.set("vodReloaded", 1);
             await this._sessionState.set("vodMediaSeqVideo", 0);

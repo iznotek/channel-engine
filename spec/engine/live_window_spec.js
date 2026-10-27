@@ -35,15 +35,18 @@ describe('Live playlist duration', () => {
     it(`passes ${configured === undefined ? 'the default' : 'a configured'} window from ChannelEngine to SessionLive`, async () => {
       jasmine.clock().install();
       let live;
+      let session;
       spyOn(SessionLive.prototype, 'initAsync').and.callFake(async function () { live = this; });
       spyOn(SessionLive.prototype, 'startPlayheadAsync').and.returnValue(Promise.resolve());
+      spyOn(Session.prototype, 'initAsync').and.callFake(async function () { session = this; });
       spyOn(Session.prototype, 'startPlayheadAsync').and.returnValue(Promise.resolve());
       try {
         const channelManager = { getChannels: () => [{ id: `live-window-${configured}`, profile: [] }] };
-        const options = { channelManager, livePlaylistDurationSeconds: configured };
+        const options = { channelManager, livePlaylistDurationSeconds: configured, preserveLiveReturnTail: true };
         const engine = new (channelEngine())({}, options);
         await engine.updateChannelsAsync(channelManager, options);
         expect(shiftWindow(live).totalDuration).toEqual(configured || 60);
+        expect(session.preserveLiveReturnTail).toEqual(true);
       } finally {
         jasmine.clock().uninstall();
       }

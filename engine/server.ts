@@ -69,6 +69,8 @@ export interface ChannelEngineOpts {
   rollingPDT?: boolean;
   /** Live playlist window in seconds (6..120), default 60. */
   livePlaylistDurationSeconds?: number;
+  /** Preserve live return tails; requires muxed audio, programme timestamps and full VOD storage. Default false. */
+  preserveLiveReturnTail?: boolean;
 }
 
 interface StreamerOpts {
@@ -506,7 +508,8 @@ export class ChannelEngine {
         slateDuration: channel.slate && channel.slate.duration ? channel.slate.duration : this.slateDuration,
         cloudWatchMetrics: this.logCloudWatchMetrics,
         sessionEventStream: options.sessionEventStream,
-        rollingPDT: options.rollingPDT
+        rollingPDT: options.rollingPDT,
+        preserveLiveReturnTail: options.preserveLiveReturnTail
       }, this.sessionStore);
 
       sessionsLive[channel.id] = new SessionLive({
