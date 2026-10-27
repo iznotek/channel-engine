@@ -5,6 +5,7 @@ const verbose = require('debug')('engine-server-verbose');
 const path = require('path');
 const Session = require('./session.js');
 const SessionLive = require('./session_live.js');
+const { resolveLivePlaylistDuration } = require('./live_window.js');
 const StreamSwitcher = require('./stream_switcher.js');
 const EventStream = require('./event_stream.js');
 const SubtitleSlicer = require('./subtitle_slicer.js');
@@ -66,6 +67,8 @@ export interface ChannelEngineOpts {
   sessionEventStream?: boolean;
   sessionHealthKey?: string;
   rollingPDT?: boolean;
+  /** Live playlist window in seconds (6..120), default 60. */
+  livePlaylistDurationSeconds?: number;
 }
 
 interface StreamerOpts {
@@ -187,6 +190,7 @@ export interface IStreamSwitchManager {
 
 export class ChannelEngine {
   private options?: ChannelEngineOpts;
+  private livePlaylistDurationSeconds: number;
   private useDemuxedAudio: boolean;
   private dummySubtitleEndpoint: string;
   private subtitleSliceEndpoint: string;
@@ -216,6 +220,7 @@ export class ChannelEngine {
   private sessionHealthKey: string = "";
   
   constructor(assetMgr: IAssetManager, options?: ChannelEngineOpts) {
+    this.livePlaylistDurationSeconds = resolveLivePlaylistDuration(options?.livePlaylistDurationSeconds);
     this.options = options;
     if (options && options.adCopyMgrUri) {
       this.adCopyMgrUri = options.adCopyMgrUri;
@@ -505,6 +510,7 @@ export class ChannelEngine {
       }, this.sessionStore);
 
       sessionsLive[channel.id] = new SessionLive({
+        livePlaylistDurationSeconds: this.livePlaylistDurationSeconds,
         sessionId: channel.id,
         useDemuxedAudio: options.useDemuxedAudio,
         dummySubtitleEndpoint: this.dummySubtitleEndpoint,

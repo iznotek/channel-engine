@@ -17,7 +17,7 @@ const daterangeAttribute = (key, attr) => {
   }
 };
 const HIGHEST_MEDIA_SEQUENCE_COUNT = 0;
-const TARGET_PLAYLIST_DURATION_SEC = 60;
+const { resolveLivePlaylistDuration } = require("./live_window.js");
 const RESET_DELAY = 5000;
 const FAIL_TIMEOUT = 4000;
 const DEFAULT_PLAYHEAD_INTERVAL_MS = 6 * 1000;
@@ -40,6 +40,7 @@ const PlaylistTypes = Object.freeze({
 
 class SessionLive {
   constructor(config, sessionLiveStore) {
+    this.livePlaylistDurationSeconds = resolveLivePlaylistDuration(config?.livePlaylistDurationSeconds);
     this.sessionId = crypto.randomBytes(20).toString("hex");
     this.sessionLiveStateStore = sessionLiveStore.sessionLiveStateStore;
     this.instanceId = sessionLiveStore.instanceId;
@@ -1559,7 +1560,7 @@ class SessionLive {
     const variantKeys = Object.keys(_segments);
 
     /* When Total Duration is past the Limit, start Shifting V2L|LIVE segments if found */
-    while (_totalDur > TARGET_PLAYLIST_DURATION_SEC) {
+    while (_totalDur > this.livePlaylistDurationSeconds) {
       let result = null;
       result = this._shiftVariantSegments(variantKeys, _name, _segments);
       // Skip loop if there are no more segments to remove...
@@ -1572,7 +1573,7 @@ class SessionLive {
         };
       }
       debug(
-        `[${this.sessionId}]: ${_name}: (${roundToThreeDecimals(_totalDur)})s/(${TARGET_PLAYLIST_DURATION_SEC})s - Playlist Duration is Over the Target. Shift needed!`
+        `[${this.sessionId}]: ${_name}: (${roundToThreeDecimals(_totalDur)})s/(${this.livePlaylistDurationSeconds})s - Playlist Duration is Over the Target. Shift needed!`
       );
       _segments = result.segments;
       if (result.timeToRemove) {
